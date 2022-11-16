@@ -40,4 +40,3 @@ log-*
 logs*/
 *.png
 run.sh
-out.json

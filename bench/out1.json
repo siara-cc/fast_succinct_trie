@@ -1,0 +1,15 @@
+{"name": "CEDAR", "build_ns_per_key": "221.076561", "lookup_ns_per_query": "241.540071", "best_lookup_ns_per_query": "232.059010", "memory_in_bytes": "40566784"}
+{"name": "CEDARPP", "build_ns_per_key": "243.853999", "lookup_ns_per_query": "285.807480", "best_lookup_ns_per_query": "273.640140", "memory_in_bytes": "25542790"}
+{"name": "DARTS", "build_ns_per_key": "909.720772", "lookup_ns_per_query": "200.175448", "best_lookup_ns_per_query": "194.920160", "memory_in_bytes": "43206112"}
+{"name": "DARTSC", "build_ns_per_key": "464.180753", "lookup_ns_per_query": "217.038295", "best_lookup_ns_per_query": "197.072020", "memory_in_bytes": "20296704"}
+{"name": "DASTRIE", "build_ns_per_key": "428.393637", "lookup_ns_per_query": "345.215658", "best_lookup_ns_per_query": "316.542840", "memory_in_bytes": "18709808"}
+{"name": "HATTRIE", "build_ns_per_key": "406.576263", "lookup_ns_per_query": "243.671293", "best_lookup_ns_per_query": "233.968200", "memory_in_bytes": "22564864"}
+{"name": "ARRAYHASH", "build_ns_per_key": "793.862333", "lookup_ns_per_query": "299.910076", "best_lookup_ns_per_query": "292.148960", "memory_in_bytes": "34992128"}
+{"name": "TX", "build_ns_per_key": "435.538864", "lookup_ns_per_query": "2783.065073", "best_lookup_ns_per_query": "2654.557900", "decode_ns_per_query": "2476.187658", "best_decode_ns_per_query": "2462.226530", "memory_in_bytes": "6022712"}
+{"name": "MARISA", "build_ns_per_key": "820.040712", "lookup_ns_per_query": "927.757952", "best_lookup_ns_per_query": "848.093150", "decode_ns_per_query": "732.601078", "best_decode_ns_per_query": "710.596290", "memory_in_bytes": "3434848"}
+{"name": "FST", "build_ns_per_key": "977.795459", "lookup_ns_per_query": "1026.671921", "best_lookup_ns_per_query": "1014.998970", "memory_in_bytes": "5390336"}
+{"name": "PDT", "build_ns_per_key": "1980.825357", "lookup_ns_per_query": "1098.852805", "best_lookup_ns_per_query": "1092.184460", "decode_ns_per_query": "1337.930201", "best_decode_ns_per_query": "1330.325790", "memory_in_bytes": "4045323"}
+{"name": "XCDAT_8", "build_ns_per_key": "558.479379", "lookup_ns_per_query": "398.772160", "best_lookup_ns_per_query": "384.156180", "decode_ns_per_query": "530.843590", "best_decode_ns_per_query": "504.976810", "memory_in_bytes": "6774425"}
+{"name": "XCDAT_16", "build_ns_per_key": "484.586321", "lookup_ns_per_query": "322.944563", "best_lookup_ns_per_query": "314.237150", "decode_ns_per_query": "441.149977", "best_decode_ns_per_query": "426.338030", "memory_in_bytes": "9578194"}
+{"name": "XCDAT_7", "build_ns_per_key": "393.518584", "lookup_ns_per_query": "385.191613", "best_lookup_ns_per_query": "377.709290", "decode_ns_per_query": "529.741171", "best_decode_ns_per_query": "521.627690", "memory_in_bytes": "7058996"}
+{"name": "XCDAT_15", "build_ns_per_key": "468.959316", "lookup_ns_per_query": "281.791385", "best_lookup_ns_per_query": "272.612090", "decode_ns_per_query": "416.638666", "best_decode_ns_per_query": "380.108960", "memory_in_bytes": "8999346"}
