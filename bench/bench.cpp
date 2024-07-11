@@ -250,6 +250,42 @@ uint64_t get_memory(trie_t* trie) {
 }
 #endif
 
+#ifdef USE_MADRAS
+#include <madras_builder_dv1.hpp>
+#include <madras_dv1.hpp>
+using trie_t = madras_dv1::static_dict;
+template <>
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+    madras_dv1::builder trie_bldr(TMP_INDEX_FILENAME, "kv_table,Key", 1, "t", "u");
+    for (std::size_t i = 0; i < keys.size(); ++i) {
+        trie_bldr.insert((const uint8_t *) keys[i].c_str(), keys[i].length());
+    }
+    trie_bldr.write_kv();
+    trie_bldr.close_file();
+    auto trie = std::make_unique<trie_t>();
+    trie->load(TMP_INDEX_FILENAME);
+    trie->load_into_vars();
+    return trie;
+}
+template <>
+uint64_t get_memory(trie_t* trie) {
+    return essentials::file_size(TMP_INDEX_FILENAME);
+}
+template <>
+uint64_t lookup(trie_t* trie, const std::string& query) {
+    uint32_t node_id;
+    trie->lookup((const uint8_t *) query.c_str(), query.length(), node_id);
+    return node_id;
+}
+template <>
+uint64_t decode(trie_t* trie, uint64_t query) {
+    uint8_t out_key[trie->get_max_key_len()];
+    int out_key_len;
+    trie->reverse_lookup_from_node_id(query, &out_key_len, out_key);
+    return out_key_len;
+}
+#endif
+
 #ifdef USE_XCDAT_7
 #include <xcdat.hpp>
 using trie_t = xcdat::trie_7_type;
@@ -479,6 +515,9 @@ int main(int argc, char* argv[]) {
 #endif
 #ifdef USE_MARISA
     main_template<trie_t>("MARISA", keys, queries, true);
+#endif
+#ifdef USE_MADRAS
+    main_template<trie_t>("MADRAS", keys, queries, true);
 #endif
 #ifdef USE_XCDAT_7
     main_template<trie_t>("XCDAT_7", keys, queries, true);

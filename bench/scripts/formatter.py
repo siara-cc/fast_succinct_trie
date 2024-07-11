@@ -19,6 +19,7 @@ PROPS = {
 
     'TX': {'label': 'tx'},
     'MARISA': {'label': 'marisa'},
+    'MADRAS': {'label': 'madras'},
     'FST': {'label': 'fst'},
     'PDT': {'label': 'pdt'},
 

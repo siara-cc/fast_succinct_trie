@@ -23,6 +23,7 @@ PROPS = {
 
     'TX': {'label': 'tx', 'marker': 'p', 'ls': 'None', 'color': CNAMES['darkorange']},
     'MARISA': {'label': 'marisa', 'marker': 'D', 'ls': 'None', 'color': CNAMES['yellow']},
+    'MADRAS': {'label': 'madras', 'marker': 'd', 'ls': 'None', 'color': CNAMES['black']},
     'FST': {'label': 'fst', 'marker': '1', 'ls': 'None', 'color': CNAMES['hotpink'], 'mfc': 'None'},
     'PDT': {'label': 'pdt', 'marker': '2', 'ls': 'None', 'color': CNAMES['purple'], 'mfc': 'None'},
 

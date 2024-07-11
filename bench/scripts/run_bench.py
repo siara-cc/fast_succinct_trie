@@ -19,6 +19,7 @@ COMMANDS = [
     'bench_arrayhash',
     'bench_tx',
     'bench_marisa',
+    'bench_madras',
     'bench_fst',
     'bench_pdt',
     'bench_xcdat_8',

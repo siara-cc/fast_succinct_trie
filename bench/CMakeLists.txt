@@ -58,6 +58,11 @@ file(GLOB_RECURSE MARISA_SOURCES "${MARISA_SOURCE_DIR}/lib/*/*.cc")
 add_executable(bench_marisa bench.cpp ${MARISA_SOURCES})
 set_target_properties(bench_marisa PROPERTIES COMPILE_DEFINITIONS "USE_MARISA")
 
+set(MADRAS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/madras-trie)
+include_directories(${MADRAS_SOURCE_DIR}/src)
+add_executable(bench_madras bench.cpp ${MADRAS_SOURCES})
+set_target_properties(bench_madras PROPERTIES COMPILE_DEFINITIONS "USE_MADRAS")
+
 set(PDT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/path_decomposed_tries)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-private-field -Wno-unused-local-typedef -Wno-reorder")
 find_package(Boost 1.42.0 COMPONENTS unit_test_framework iostreams system thread filesystem REQUIRED)
