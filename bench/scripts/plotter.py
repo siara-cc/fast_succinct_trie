@@ -23,7 +23,7 @@ PROPS = {
 
     'TX': {'label': 'tx', 'marker': 'p', 'ls': 'None', 'color': CNAMES['darkorange']},
     'MARISA': {'label': 'marisa', 'marker': 'D', 'ls': 'None', 'color': CNAMES['yellow']},
-    'MADRAS': {'label': 'madras', 'marker': 'd', 'ls': 'None', 'color': CNAMES['black']},
+    'MADRAS': {'label': 'madras', 'marker': '>', 'ls': 'None', 'color': CNAMES['orangered']},
     'FST': {'label': 'fst', 'marker': '1', 'ls': 'None', 'color': CNAMES['hotpink'], 'mfc': 'None'},
     'PDT': {'label': 'pdt', 'marker': '2', 'ls': 'None', 'color': CNAMES['purple'], 'mfc': 'None'},
 
@@ -62,7 +62,7 @@ def plot_constr_vs_memory(logs_dict, title):
     ax.set_yscale('log', base=2)
     ax.set_title(title)
     fig.tight_layout()
-    fig.savefig('constr_vs_memory.png')
+    fig.savefig('constr_vs_memory(' + title + ').png')
     plt.close(fig)
 
 
@@ -89,7 +89,7 @@ def plot_lookup_vs_memory(logs_dict, title):
     ax.set_yscale('log', base=2)
     ax.set_title(title)
     fig.tight_layout()
-    fig.savefig('lookup_vs_memory.png')
+    fig.savefig('lookup_vs_memory(' + title + ').png')
     plt.close(fig)
 
 
@@ -118,7 +118,7 @@ def plot_decode_vs_memory(logs_dict, title):
     ax.set_yscale('log', base=2)
     ax.set_title(title)
     fig.tight_layout()
-    fig.savefig('decode_vs_memory.png')
+    fig.savefig('decode_vs_memory(' + title + ').png')
     plt.close(fig)
 
 

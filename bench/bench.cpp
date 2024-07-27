@@ -281,7 +281,7 @@ template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
     uint8_t out_key[trie->get_max_key_len()];
     int out_key_len;
-    trie->reverse_lookup_from_node_id(query, &out_key_len, out_key);
+    trie->reverse_lookup_from_node_id(query, &out_key_len, out_key, false);
     return out_key_len;
 }
 #endif
