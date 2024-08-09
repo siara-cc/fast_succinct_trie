@@ -41,8 +41,12 @@ std::vector<std::string> sample_strings(const std::vector<std::string>& strings,
     return sampled;
 }
 
+typedef struct {
+    bool force_asc;
+} build_opts;
+
 template <class T>
-std::unique_ptr<T> build(std::vector<std::string>&);
+std::unique_ptr<T> build(std::vector<std::string>&, build_opts& opts);
 template <class T>
 uint64_t lookup(T*, const std::string&);
 template <class T>
@@ -55,7 +59,7 @@ uint64_t get_memory(T*);
 using trie_t = fst::Trie;
 static const uint32_t SPARSE_DENSE_RATIO = 16;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>(keys, true, SPARSE_DENSE_RATIO);
     return trie;
 }
@@ -86,7 +90,7 @@ using trie_t = Darts::DoubleArrayImpl<void, void, int32_t, void>;
 #endif
 #if defined(USE_DARTS) || defined(USE_DARTSC)
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& key_strs) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& key_strs, build_opts& opts) {
     std::size_t num_keys = key_strs.size();
     std::vector<const char*> keys(num_keys);
     for (std::size_t i = 0; i < num_keys; ++i) {
@@ -122,7 +126,7 @@ uint64_t get_memory(trie_t* trie) {
 #if defined(USE_CEDAR) || defined(USE_CEDARPP)
 using trie_t = cedar::da<uint32_t>;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>();
     for (std::size_t i = 0; i < keys.size(); ++i) {
         trie->update(keys[i].c_str(), keys[i].size(), uint32_t(i));
@@ -149,7 +153,7 @@ uint64_t get_memory(trie_t* trie) {
 #include "dastrie/dastrie.h"
 using trie_t = dastrie::trie<uint32_t>;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     using builder_t = dastrie::builder<const char*, uint32_t>;
     using record_t = builder_t::record_type;
 
@@ -190,7 +194,7 @@ uint64_t get_memory(trie_t* trie) {
 #include <tx.hpp>
 using trie_t = tx_tool::tx;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     {
         trie_t trie;
         trie.build(keys, TMP_INDEX_FILENAME);
@@ -221,13 +225,16 @@ uint64_t get_memory(trie_t*) {
 #include <marisa.h>
 using trie_t = marisa::Trie;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     marisa::Keyset keyset;
     for (std::size_t i = 0; i < keys.size(); ++i) {
         keyset.push_back(keys[i].c_str(), keys[i].length(), 1.0F);
     }
+    marisa::NodeOrder param_node_order = MARISA_DEFAULT_ORDER;
+    if (opts.force_asc)
+        param_node_order = MARISA_LABEL_ORDER;
     auto trie = std::make_unique<trie_t>();
-    trie->build(keyset);
+    trie->build(keyset, param_node_order);
     return trie;
 }
 template <>
@@ -255,8 +262,14 @@ uint64_t get_memory(trie_t* trie) {
 #include <madras_dv1.hpp>
 using trie_t = madras_dv1::static_dict;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
-    madras_dv1::builder trie_bldr(TMP_INDEX_FILENAME, "kv_table,Key", 1, "t", "u");
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
+    madras_dv1::bldr_options bldr_opts = madras_dv1::dflt_opts;
+    if (opts.force_asc) {
+        bldr_opts.dart = true;
+        bldr_opts.sort_nodes_on_freq = false;
+    }
+    madras_dv1::builder trie_bldr(TMP_INDEX_FILENAME, "kv_table,Key", 1, "t", "u",
+                0, true, false, bldr_opts);
     for (std::size_t i = 0; i < keys.size(); ++i) {
         trie_bldr.insert((const uint8_t *) keys[i].c_str(), keys[i].length());
     }
@@ -305,7 +318,7 @@ using trie_t = xcdat::trie_16_type;
 
 #if defined(USE_XCDAT_7) || defined(USE_XCDAT_8) || defined(USE_XCDAT_15) || defined(USE_XCDAT_16)
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>(keys);
     return trie;
 }
@@ -332,7 +345,7 @@ uint64_t get_memory(trie_t* trie) {
 #include <tries/path_decomposed_trie.hpp>
 using trie_t = succinct::tries::path_decomposed_trie<succinct::tries::compressed_string_pool>;
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>(keys);
     return trie;
 }
@@ -380,7 +393,7 @@ class serializer {
     std::ofstream m_ostream;
 };
 template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys) {
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>();
     for (std::size_t i = 0; i < keys.size(); ++i) {
         trie->insert(keys[i].c_str(), uint32_t(i));
@@ -406,7 +419,7 @@ uint64_t get_memory(trie_t* trie) {
 
 template <class T>
 void main_template(const char* title, std::vector<std::string>& keys, std::vector<std::string>& queries,
-                   bool run_decode) {
+                   bool run_decode, build_opts& opts) {
     essentials::json_lines logger;
     logger.add("name", title);
 
@@ -414,7 +427,7 @@ void main_template(const char* title, std::vector<std::string>& keys, std::vecto
     {
         essentials::timer<essentials::clock_type, std::chrono::nanoseconds> tm;
         tm.start();
-        trie = build<T>(keys);
+        trie = build<T>(keys, opts);
         tm.stop();
         logger.add("build_ns_per_key", tm.average() / keys.size());
     }
@@ -470,6 +483,7 @@ cmd_line_parser::parser make_parser(int argc, char** argv) {
     p.add("num_samples", "Number of sample keys for searches (default=100000)", "-n", false);
     p.add("random_seed", "Random seed for sampling (default=13)", "-s", false);
     p.add("to_unique", "Unique strings? (default=false)", "-u", false);
+    p.add("force_asc", "Force Ascending label order? (default=false)", "-a", false);
     return p;
 }
 
@@ -488,57 +502,61 @@ int main(int argc, char* argv[]) {
     const auto num_samples = p.get<std::uint64_t>("num_samples", 100000);
     const auto random_seed = p.get<std::uint64_t>("random_seed", 13);
     const auto to_unique = p.get<bool>("to_unique", false);
+    const auto force_asc = p.get<bool>("force_asc", false);
+
+    build_opts opts;
+    opts.force_asc = force_asc;
 
     auto keys = load_strings(input_keys, to_unique);
     auto queries = sample_strings(keys, num_samples, random_seed);
 
 #ifdef USE_FST
-    main_template<trie_t>("FST", keys, queries, false);
+    main_template<trie_t>("FST", keys, queries, false, opts);
 #endif
 #ifdef USE_DARTS
-    main_template<trie_t>("DARTS", keys, queries, false);
+    main_template<trie_t>("DARTS", keys, queries, false, opts);
 #endif
 #ifdef USE_DARTSC
-    main_template<trie_t>("DARTSC", keys, queries, false);
+    main_template<trie_t>("DARTSC", keys, queries, false, opts);
 #endif
 #ifdef USE_CEDAR
-    main_template<trie_t>("CEDAR", keys, queries, false);
+    main_template<trie_t>("CEDAR", keys, queries, false, opts);
 #endif
 #ifdef USE_CEDARPP
-    main_template<trie_t>("CEDARPP", keys, queries, false);
+    main_template<trie_t>("CEDARPP", keys, queries, false, opts);
 #endif
 #ifdef USE_DASTRIE
-    main_template<trie_t>("DASTRIE", keys, queries, false);
+    main_template<trie_t>("DASTRIE", keys, queries, false, opts);
 #endif
 #ifdef USE_TX
-    main_template<trie_t>("TX", keys, queries, true);
+    main_template<trie_t>("TX", keys, queries, true, opts);
 #endif
 #ifdef USE_MARISA
-    main_template<trie_t>("MARISA", keys, queries, true);
+    main_template<trie_t>("MARISA", keys, queries, true, opts);
 #endif
 #ifdef USE_MADRAS
-    main_template<trie_t>("MADRAS", keys, queries, true);
+    main_template<trie_t>("MADRAS", keys, queries, true, opts);
 #endif
 #ifdef USE_XCDAT_7
-    main_template<trie_t>("XCDAT_7", keys, queries, true);
+    main_template<trie_t>("XCDAT_7", keys, queries, true, opts);
 #endif
 #ifdef USE_XCDAT_8
-    main_template<trie_t>("XCDAT_8", keys, queries, true);
+    main_template<trie_t>("XCDAT_8", keys, queries, true, opts);
 #endif
 #ifdef USE_XCDAT_15
-    main_template<trie_t>("XCDAT_15", keys, queries, true);
+    main_template<trie_t>("XCDAT_15", keys, queries, true, opts);
 #endif
 #ifdef USE_XCDAT_16
-    main_template<trie_t>("XCDAT_16", keys, queries, true);
+    main_template<trie_t>("XCDAT_16", keys, queries, true, opts);
 #endif
 #ifdef USE_PDT
-    main_template<trie_t>("PDT", keys, queries, true);
+    main_template<trie_t>("PDT", keys, queries, true, opts);
 #endif
 #ifdef USE_HATTRIE
-    main_template<trie_t>("HATTRIE", keys, queries, false);
+    main_template<trie_t>("HATTRIE", keys, queries, false, opts);
 #endif
 #ifdef USE_ARRAYHASH
-    main_template<trie_t>("ARRAYHASH", keys, queries, false);
+    main_template<trie_t>("ARRAYHASH", keys, queries, false, opts);
 #endif
     std::remove(TMP_INDEX_FILENAME);
 
