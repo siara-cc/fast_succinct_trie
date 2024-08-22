@@ -8,7 +8,7 @@ endif ()
 
 set(GCC_WARNINGS "-Wall")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread ${GCC_WARNINGS}")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -march=native -DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -march=native -DNDEBUG -O2 -g")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer -O0 -g -DDEBUG -march=native")
 
 message(STATUS "BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
@@ -52,6 +52,7 @@ add_executable(bench_tx bench.cpp ${TX_SOURCE_DIR}/tx.cpp ${TX_SOURCE_DIR}/ssv.c
 set_target_properties(bench_tx PROPERTIES COMPILE_DEFINITIONS "USE_TX")
 
 set(MARISA_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/marisa-trie)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMARISA_USE_POPCNT -mpopcnt -DMARISA_USE_BMI2 -DMARISA_WORD_SIZE=64 -mbmi2 -msse4")
 include_directories(${MARISA_SOURCE_DIR}/include)
 include_directories(${MARISA_SOURCE_DIR}/lib)
 file(GLOB_RECURSE MARISA_SOURCES "${MARISA_SOURCE_DIR}/lib/*/*.cc")
@@ -59,7 +60,7 @@ add_executable(bench_marisa bench.cpp ${MARISA_SOURCES})
 set_target_properties(bench_marisa PROPERTIES COMPILE_DEFINITIONS "USE_MARISA")
 
 set(MADRAS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/madras-trie)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -DMDX_NO_NULLS")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -mpopcnt -mbmi2")
 include_directories(${MADRAS_SOURCE_DIR}/src)
 add_executable(bench_madras bench.cpp ${MADRAS_SOURCES})
 set_target_properties(bench_madras PROPERTIES COMPILE_DEFINITIONS "USE_MADRAS")
