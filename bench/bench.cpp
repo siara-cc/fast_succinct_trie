@@ -286,9 +286,11 @@ uint64_t get_memory(trie_t* trie) {
 }
 template <>
 uint64_t lookup(trie_t* trie, const std::string& query) {
-    uint32_t node_id;
-    trie->lookup((const uint8_t *) query.c_str(), query.length(), node_id);
-    return node_id;
+    madras_dv1::input_ctx in_ctx;
+    in_ctx.key = (const uint8_t *) query.c_str();
+    in_ctx.key_len = query.length();
+    trie->lookup(in_ctx);
+    return in_ctx.node_id;
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
