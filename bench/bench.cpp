@@ -260,7 +260,7 @@ uint64_t get_memory(trie_t* trie) {
 #ifdef USE_MADRAS
 #include <madras_builder_dv1.hpp>
 #include <madras_dv1.hpp>
-using trie_t = madras_dv1::static_dict;
+using trie_t = madras_dv1::static_trie_map;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     madras_dv1::bldr_options bldr_opts = madras_dv1::dflt_opts;
