@@ -265,7 +265,7 @@ template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     madras_dv1::bldr_options bldr_opts = madras_dv1::dflt_opts;
     if (opts.force_asc) {
-        bldr_opts.dart = true;
+        bldr_opts.dart = false;
         bldr_opts.sort_nodes_on_freq = false;
     }
     madras_dv1::builder trie_bldr(TMP_INDEX_FILENAME, "kv_table,Key", 1, "t", "u",
@@ -290,13 +290,13 @@ uint64_t lookup(trie_t* trie, const std::string& query) {
     in_ctx.key = (const uint8_t *) query.c_str();
     in_ctx.key_len = query.length();
     trie->lookup(in_ctx);
-    return in_ctx.node_id;
+    return trie->leaf_rank1(in_ctx.node_id);
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
     uint8_t out_key[trie->get_max_key_len()];
-    int out_key_len;
-    trie->reverse_lookup_from_node_id(query, &out_key_len, out_key, false);
+    size_t out_key_len;
+    trie->reverse_lookup(query, &out_key_len, out_key);
     return out_key_len;
 }
 #endif
