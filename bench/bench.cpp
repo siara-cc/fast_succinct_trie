@@ -260,33 +260,49 @@ uint64_t get_memory(trie_t* trie) {
 #ifdef USE_MADRAS
 #include <madras_builder_dv1.hpp>
 #include <madras_dv1.hpp>
+class cleanup_madras : public madras_dv1::cleanup_interface {
+    private:
+        std::vector<uint8_t> *output_buf;
+    public:
+        virtual ~cleanup_madras() {
+        }
+        void release() {
+            delete output_buf;
+        }
+        void init(std::vector<uint8_t> *_output_buf) {
+            output_buf = _output_buf;
+        }
+};
 using trie_t = madras_dv1::static_trie_map;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     madras_dv1::bldr_options bldr_opts = madras_dv1::dflt_opts;
     if (opts.force_asc) {
-        bldr_opts.dart = false;
+        bldr_opts.dart = true;
         bldr_opts.sort_nodes_on_freq = false;
     }
-    madras_dv1::builder trie_bldr(TMP_INDEX_FILENAME, "kv_table,Key", 1, "t", "u",
+    madras_dv1::builder trie_bldr(nullptr, "kv_table,Key", 1, "t", "u",
                 0, true, false, bldr_opts);
     for (std::size_t i = 0; i < keys.size(); ++i) {
         trie_bldr.insert((const uint8_t *) keys[i].c_str(), keys[i].length());
     }
+    std::vector<uint8_t> *output_buf = new std::vector<uint8_t>();
+    trie_bldr.set_out_vec(output_buf);
     trie_bldr.write_kv();
     trie_bldr.close_file();
     auto trie = std::make_unique<trie_t>();
-    trie->load(TMP_INDEX_FILENAME);
-    trie->load_into_vars();
+    trie->load_from_mem(output_buf->data(), output_buf->size());
+    cleanup_madras *cleanup_obj = new cleanup_madras();
+    trie->set_cleanup_object(cleanup_obj);
     return trie;
 }
 template <>
 uint64_t get_memory(trie_t* trie) {
-    return essentials::file_size(TMP_INDEX_FILENAME);
+    return trie->get_size();
 }
 template <>
 uint64_t lookup(trie_t* trie, const std::string& query) {
-    madras_dv1::input_ctx in_ctx;
+    static madras_dv1::input_ctx in_ctx;
     in_ctx.key = (const uint8_t *) query.c_str();
     in_ctx.key_len = query.length();
     trie->lookup(in_ctx);
