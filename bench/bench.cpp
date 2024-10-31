@@ -317,6 +317,32 @@ uint64_t decode(trie_t* trie, uint64_t query) {
 }
 #endif
 
+#ifdef USE_ART
+#include <art.hpp>
+using trie_t = art::art_trie;
+template <>
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
+    auto trie = std::make_unique<trie_t>();
+    for (std::size_t i = 0; i < keys.size(); ++i) {
+        trie->art_insert((const uint8_t *) keys[i].c_str(), keys[i].length(), nullptr);
+    }
+    return trie;
+}
+template <>
+uint64_t get_memory(trie_t* trie) {
+    return trie->art_size_in_bytes();
+}
+template <>
+uint64_t lookup(trie_t* trie, const std::string& query) {
+    trie->art_search((const uint8_t *) query.c_str(), query.length());
+    return 0;
+}
+template <>
+uint64_t decode(trie_t* trie, uint64_t query) {
+    return 0;
+}
+#endif
+
 #ifdef USE_XCDAT_7
 #include <xcdat.hpp>
 using trie_t = xcdat::trie_7_type;
@@ -554,6 +580,9 @@ int main(int argc, char* argv[]) {
 #endif
 #ifdef USE_MADRAS
     main_template<trie_t>("MADRAS", keys, queries, true, opts);
+#endif
+#ifdef USE_ART
+    main_template<trie_t>("ART", keys, queries, false, opts);
 #endif
 #ifdef USE_XCDAT_7
     main_template<trie_t>("XCDAT_7", keys, queries, true, opts);

@@ -19,3 +19,6 @@
 [submodule "bench/madras-trie"]
 	path = bench/madras-trie
 	url = https://github.com/siara-cc/madras-trie
+[submodule "bench/libart"]
+	path = bench/libart
+	url = http://github.com/siara-cc/libart
