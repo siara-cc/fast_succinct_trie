@@ -95,6 +95,8 @@ endif ()
 add_subdirectory(${PDT_SOURCE_DIR}/tries)
 add_subdirectory(${PDT_SOURCE_DIR}/repair)
 add_executable(bench_pdt bench.cpp)
+target_include_directories(bench_pdt PUBLIC ${Boost_INCLUDE_DIRS})
+target_include_directories(bench_pdt PUBLIC ${PDT_SOURCE_DIR})
 target_link_libraries(bench_pdt succinct ${Boost_LIBRARIES})
 set_target_properties(bench_pdt PROPERTIES COMPILE_DEFINITIONS "USE_PDT")
 

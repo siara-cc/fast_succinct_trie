@@ -12,6 +12,7 @@ CNAMES = matplotlib.colors.cnames
 PROPS = {
     'ART': {'label': 'art', 'marker': '.', 'ls': 'None', 'color': CNAMES['blue']},
     'LEOPARD': {'label': 'leopard', 'marker': 'P', 'ls': 'None', 'color': CNAMES['orange']},
+    'COCO_TRIE': {'label': 'coco-trie', 'marker': 'X', 'ls': 'None', 'color': CNAMES['orange']},
     'XCDAT_8': {'label': 'xcdat<8>', 'marker': '^', 'ls': 'None', 'color': CNAMES['red']},
     'XCDAT_16': {'label': 'xcdat<16>', 'marker': '^', 'ls': 'None', 'color': CNAMES['red'], 'mfc': 'None'},
     'XCDAT_7': {'label': 'xcdat<7>', 'marker': 'v', 'ls': 'None', 'color': CNAMES['red']},

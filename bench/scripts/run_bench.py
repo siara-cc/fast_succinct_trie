@@ -22,6 +22,7 @@ COMMANDS = [
     'bench_madras',
     'bench_art',
     'bench_leopard',
+    '../CoCo-trie-wrapper/build/bench_coco',
     'bench_fst',
     'bench_pdt',
     'bench_xcdat_8',

@@ -25,3 +25,9 @@
 [submodule "bench/leopard-trie"]
 	path = bench/leopard-trie
 	url = http://github.com/siara-cc/leopard-trie
+[submodule "CoCo-trie"]
+	path = CoCo-trie
+	url = https://github.com/aboffa/CoCo-trie
+[submodule "bench/CoCo-trie"]
+	path = bench/CoCo-trie
+	url = https://github.com/aboffa/CoCo-trie

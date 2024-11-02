@@ -234,7 +234,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     if (opts.force_asc)
         param_node_order = MARISA_LABEL_ORDER;
     auto trie = std::make_unique<trie_t>();
-    trie->build(keyset, param_node_order);
+    trie->build(keyset, 1 | param_node_order);
     return trie;
 }
 template <>
@@ -364,6 +364,34 @@ uint64_t lookup(trie_t* trie, const std::string& query) {
     static leopard::node_set_vars nsv;
     trie->lookup((const uint8_t *) query.c_str(), query.length(), nsv);
     return 0;
+}
+template <>
+uint64_t decode(trie_t* trie, uint64_t query) {
+    return 0;
+}
+#endif
+
+#ifdef USE_COCO_TRIE
+#include <uncompacted_trie.hpp>
+#include <utils.hpp>
+#include <CoCo-trie_v2.hpp>
+using trie_t = CoCo_v2<>;
+template <>
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
+    datasetStats ds = dataset_stats_from_vector(keys);
+    // Global variables
+    MIN_CHAR = ds.get_min_char();
+    ALPHABET_SIZE = ds.get_alphabet_size();
+    auto trie = std::make_unique<trie_t>(keys);
+    return trie;
+}
+template <>
+uint64_t get_memory(trie_t* trie) {
+    return trie->size_in_bits()/8;
+}
+template <>
+uint64_t lookup(trie_t* trie, const std::string& query) {
+    return trie->look_up(query.c_str());
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
@@ -614,6 +642,9 @@ int main(int argc, char* argv[]) {
 #endif
 #ifdef USE_LEOPARD
     main_template<trie_t>("LEOPARD", keys, queries, false, opts);
+#endif
+#ifdef USE_COCO_TRIE
+    main_template<trie_t>("COCO_TRIE", keys, queries, false, opts);
 #endif
 #ifdef USE_XCDAT_7
     main_template<trie_t>("XCDAT_7", keys, queries, true, opts);
