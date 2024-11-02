@@ -343,6 +343,34 @@ uint64_t decode(trie_t* trie, uint64_t query) {
 }
 #endif
 
+#ifdef USE_LEOPARD
+#include <leopard.hpp>
+using trie_t = leopard::trie;
+template <>
+std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
+    auto trie = std::make_unique<trie_t>(1, "t", "u", false, false, false);
+    for (std::size_t i = 0; i < keys.size(); ++i) {
+        trie->insert((const uint8_t *) keys[i].c_str(), keys[i].length());
+    }
+    trie->recreate_min_loc();
+    return trie;
+}
+template <>
+uint64_t get_memory(trie_t* trie) {
+    return trie->get_size_in_bytes();
+}
+template <>
+uint64_t lookup(trie_t* trie, const std::string& query) {
+    static leopard::node_set_vars nsv;
+    trie->lookup((const uint8_t *) query.c_str(), query.length(), nsv);
+    return 0;
+}
+template <>
+uint64_t decode(trie_t* trie, uint64_t query) {
+    return 0;
+}
+#endif
+
 #ifdef USE_XCDAT_7
 #include <xcdat.hpp>
 using trie_t = xcdat::trie_7_type;
@@ -583,6 +611,9 @@ int main(int argc, char* argv[]) {
 #endif
 #ifdef USE_ART
     main_template<trie_t>("ART", keys, queries, false, opts);
+#endif
+#ifdef USE_LEOPARD
+    main_template<trie_t>("LEOPARD", keys, queries, false, opts);
 #endif
 #ifdef USE_XCDAT_7
     main_template<trie_t>("XCDAT_7", keys, queries, true, opts);

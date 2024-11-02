@@ -21,6 +21,7 @@ COMMANDS = [
     'bench_marisa',
     'bench_madras',
     'bench_art',
+    'bench_leopard',
     'bench_fst',
     'bench_pdt',
     'bench_xcdat_8',

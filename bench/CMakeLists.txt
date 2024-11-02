@@ -71,6 +71,12 @@ include_directories(${ART_SOURCE_DIR}/cpp_src)
 add_executable(bench_art bench.cpp ${ART_SOURCES})
 set_target_properties(bench_art PROPERTIES COMPILE_DEFINITIONS "USE_ART")
 
+set(LEOPARD_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/leopard-trie)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -mpopcnt -mbmi2")
+include_directories(${LEOPARD_SOURCE_DIR}/src)
+add_executable(bench_leopard bench.cpp ${LEOPARD_SOURCES})
+set_target_properties(bench_leopard PROPERTIES COMPILE_DEFINITIONS "USE_LEOPARD")
+
 set(PDT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/path_decomposed_tries)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-private-field -Wno-unused-local-typedef -Wno-reorder")
 find_package(Boost 1.42.0 COMPONENTS unit_test_framework iostreams system thread filesystem REQUIRED)
