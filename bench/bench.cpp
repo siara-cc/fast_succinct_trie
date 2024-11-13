@@ -4,6 +4,8 @@
 #include <numeric>
 #include <random>
 #include <string>
+#include <cstdlib>
+#include <stdint.h>
 
 #include "cmd_line_parser/parser.hpp"
 #include "essentials/essentials.hpp"
@@ -43,12 +45,44 @@ std::vector<std::string> sample_strings(const std::vector<std::string>& strings,
 
 typedef struct {
     bool force_asc;
+    bool as_int;
+    int trie_count;
+    std::string other_opts;
 } build_opts;
+
+static size_t get_svint60_len(int64_t vint) {
+    vint = abs(vint);
+    return vint < (1 << 4) ? 1 : (vint < (1 << 12) ? 2 : (vint < (1 << 20) ? 3 :
+            (vint < (1 << 28) ? 4 : (vint < (1LL << 36) ? 5 : (vint < (1LL << 44) ? 6 :
+            (vint < (1LL << 52) ? 7 : 8))))));
+}
+
+static void copy_svint60(int64_t input, uint8_t *out, size_t vlen) {
+    vlen--;
+    long lng = abs(input);
+    *out++ = ((lng >> (vlen * 8)) & 0x0F) + (vlen << 4) + (input < 0 ? 0x00 : 0x80);
+    while (vlen--)
+      *out++ = ((lng >> (vlen * 8)) & 0xFF);
+}
+
+static int64_t read_svint60(uint8_t *ptr) {
+    int64_t ret = *ptr & 0x0F;
+    bool is_neg = true;
+    if (*ptr & 0x80)
+      is_neg = false;
+    size_t len = (*ptr >> 4) & 0x07;
+    while (len--) {
+      ret <<= 8;
+      ptr++;
+      ret |= *ptr;
+    }
+    return is_neg ? -ret : ret;
+}
 
 template <class T>
 std::unique_ptr<T> build(std::vector<std::string>&, build_opts& opts);
 template <class T>
-uint64_t lookup(T*, const std::string&);
+uint64_t lookup(T*, const std::string&, bool as_str_or_int);
 template <class T>
 uint64_t decode(T*, uint64_t);
 template <class T>
@@ -64,7 +98,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     auto res = trie->exactSearch(query);
     return res != fst::kNotFound ? uint64_t(res) : NOT_FOUND;
 }
@@ -102,7 +136,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& key_strs, build_opts& op
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     auto res = trie->exactMatchSearch<int32_t>(query.c_str(), query.length());
     return res != -1 ? uint64_t(res) : NOT_FOUND;
 }
@@ -128,14 +162,34 @@ using trie_t = cedar::da<uint32_t>;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>();
+    if (!opts.as_int) {
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            trie->update(keys[i].c_str(), keys[i].size(), uint32_t(i));
+        }
+        return trie;
+    }
+    int64_t ival;
+    size_t isize;
+    char istr[10];
     for (std::size_t i = 0; i < keys.size(); ++i) {
-        trie->update(keys[i].c_str(), keys[i].size(), uint32_t(i));
+        ival = atoll(keys[i].c_str());
+        isize = get_svint60_len(ival);
+        copy_svint60(ival, (uint8_t *) istr, isize);
+        trie->update(istr, isize, uint32_t(i));
     }
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
-    auto res = trie->exactMatchSearch<uint32_t>(query.c_str(), query.length());
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
+    if (as_str_or_int) {
+        auto res = trie->exactMatchSearch<uint32_t>(query.c_str(), query.length());
+        return res != uint32_t(trie_t::error_code::CEDAR_NO_VALUE) ? uint64_t(res) : NOT_FOUND;
+    }
+    char istr[10];
+    int64_t ival = atoll(query.c_str());
+    size_t isize = get_svint60_len(ival);
+    copy_svint60(ival, (uint8_t *) istr, isize);
+    auto res = trie->exactMatchSearch<uint32_t>(istr, isize);
     return res != uint32_t(trie_t::error_code::CEDAR_NO_VALUE) ? uint64_t(res) : NOT_FOUND;
 }
 template <>
@@ -176,7 +230,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     auto res = trie->get(query.c_str(), UINT32_MAX);
     return res != UINT32_MAX ? uint64_t(res) : NOT_FOUND;
 }
@@ -204,7 +258,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     static size_t retLen = 0;
     auto res = trie->prefixSearch(query.c_str(), query.length(), retLen);
     return res != tx_tool::tx::NOTFOUND ? uint64_t(res) : NOT_FOUND;
@@ -227,21 +281,42 @@ using trie_t = marisa::Trie;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     marisa::Keyset keyset;
-    for (std::size_t i = 0; i < keys.size(); ++i) {
-        keyset.push_back(keys[i].c_str(), keys[i].length(), 1.0F);
+    if (!opts.as_int) {
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            keyset.push_back(keys[i].c_str(), keys[i].length(), 1.0F);
+        }
+    } else {
+        int64_t ival;
+        size_t isize;
+        char istr[10];
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            ival = atoll(keys[i].c_str());
+            isize = get_svint60_len(ival);
+            copy_svint60(ival, (uint8_t *) istr, isize);
+            keyset.push_back(istr, isize, 1.0F);
+        }
     }
     marisa::NodeOrder param_node_order = MARISA_DEFAULT_ORDER;
     if (opts.force_asc)
         param_node_order = MARISA_LABEL_ORDER;
     auto trie = std::make_unique<trie_t>();
-    trie->build(keyset, 1 | param_node_order);
+    trie->build(keyset, opts.trie_count | param_node_order);
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     static marisa::Agent agent;
-    agent.set_query(query.c_str(), query.length());
+    if (as_str_or_int) {
+        agent.set_query(query.c_str(), query.length());
+        return trie->lookup(agent) ? uint64_t(agent.key().id()) : NOT_FOUND;
+    }
+    char istr[10];
+    int64_t ival = atoll(query.c_str());
+    size_t isize = get_svint60_len(ival);
+    copy_svint60(ival, (uint8_t *) istr, isize);
+    agent.set_query(istr, isize);
     return trie->lookup(agent) ? uint64_t(agent.key().id()) : NOT_FOUND;
+
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
@@ -281,10 +356,23 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
         bldr_opts.dart = true;
         bldr_opts.sort_nodes_on_freq = false;
     }
+    bldr_opts.max_inner_tries = opts.trie_count - 1;
     madras_dv1::builder trie_bldr(nullptr, "kv_table,Key", 1, "t", "u",
                 0, true, false, bldr_opts);
-    for (std::size_t i = 0; i < keys.size(); ++i) {
-        trie_bldr.insert((const uint8_t *) keys[i].c_str(), keys[i].length());
+    if (!opts.as_int) {
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            trie_bldr.insert((const uint8_t *) keys[i].c_str(), keys[i].length());
+        }
+    } else {
+        int64_t ival;
+        size_t isize;
+        char istr[10];
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            ival = atoll(keys[i].c_str());
+            isize = get_svint60_len(ival);
+            copy_svint60(ival, (uint8_t *) istr, isize);
+            trie_bldr.insert((const uint8_t *) istr, isize);
+        }
     }
     std::vector<uint8_t> *output_buf = new std::vector<uint8_t>();
     trie_bldr.set_out_vec(output_buf);
@@ -301,12 +389,20 @@ uint64_t get_memory(trie_t* trie) {
     return trie->get_size();
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     static madras_dv1::input_ctx in_ctx;
-    in_ctx.key = (const uint8_t *) query.c_str();
-    in_ctx.key_len = query.length();
-    trie->lookup(in_ctx);
-    return trie->leaf_rank1(in_ctx.node_id);
+    if (as_str_or_int) {
+        in_ctx.key = (const uint8_t *) query.c_str();
+        in_ctx.key_len = query.length();
+        return trie->lookup(in_ctx) ? trie->leaf_rank1(in_ctx.node_id) : NOT_FOUND;
+    }
+    char istr[10];
+    int64_t ival = atoll(query.c_str());
+    size_t isize = get_svint60_len(ival);
+    copy_svint60(ival, (uint8_t *) istr, isize);
+    in_ctx.key = (const uint8_t *) istr;
+    in_ctx.key_len = isize;
+    return trie->lookup(in_ctx) ? trie->leaf_rank1(in_ctx.node_id) : NOT_FOUND;
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
@@ -323,8 +419,20 @@ using trie_t = art::art_trie;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     auto trie = std::make_unique<trie_t>();
+    if (!opts.as_int) {
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            trie->art_insert((const uint8_t *) keys[i].c_str(), keys[i].length(), trie.get());
+        }
+        return trie;
+    }
+    int64_t ival;
+    size_t isize;
+    char istr[10];
     for (std::size_t i = 0; i < keys.size(); ++i) {
-        trie->art_insert((const uint8_t *) keys[i].c_str(), keys[i].length(), nullptr);
+        ival = atoll(keys[i].c_str());
+        isize = get_svint60_len(ival);
+        copy_svint60(ival, (uint8_t *) istr, isize);
+        trie->art_insert((const uint8_t *) istr, isize, trie.get());
     }
     return trie;
 }
@@ -333,9 +441,15 @@ uint64_t get_memory(trie_t* trie) {
     return trie->art_size_in_bytes();
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
-    trie->art_search((const uint8_t *) query.c_str(), query.length());
-    return 0;
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
+    if (as_str_or_int) {
+        return (trie->art_search((const uint8_t *) query.c_str(), query.length()) != nullptr ? 1 : NOT_FOUND);
+    }
+    char istr[10];
+    int64_t ival = atoll(query.c_str());
+    size_t isize = get_svint60_len(ival);
+    copy_svint60(ival, (uint8_t *) istr, isize);
+    return (trie->art_search((const uint8_t *) istr, isize) != nullptr ? 1 : NOT_FOUND);
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
@@ -348,9 +462,22 @@ uint64_t decode(trie_t* trie, uint64_t query) {
 using trie_t = leopard::trie;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
-    auto trie = std::make_unique<trie_t>(1, "t", "u", false, false, false);
+    auto trie = std::make_unique<trie_t>(1, "t", "u");
+    if (!opts.as_int) {
+        for (std::size_t i = 0; i < keys.size(); ++i) {
+            trie->insert((const uint8_t *) keys[i].c_str(), keys[i].length());
+        }
+        trie->recreate_min_loc();
+        return trie;
+    }
+    int64_t ival;
+    size_t isize;
+    char istr[10];
     for (std::size_t i = 0; i < keys.size(); ++i) {
-        trie->insert((const uint8_t *) keys[i].c_str(), keys[i].length());
+        ival = atoll(keys[i].c_str());
+        isize = get_svint60_len(ival);
+        copy_svint60(ival, (uint8_t *) istr, isize);
+        trie->insert((const uint8_t *) istr, isize);
     }
     trie->recreate_min_loc();
     return trie;
@@ -360,10 +487,16 @@ uint64_t get_memory(trie_t* trie) {
     return trie->get_size_in_bytes();
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     static leopard::node_set_vars nsv;
-    trie->lookup((const uint8_t *) query.c_str(), query.length(), nsv);
-    return 0;
+    if (as_str_or_int) {
+        return trie->lookup((const uint8_t *) query.c_str(), query.length(), nsv) ? 1 : NOT_FOUND;
+    }
+    char istr[10];
+    int64_t ival = atoll(query.c_str());
+    size_t isize = get_svint60_len(ival);
+    copy_svint60(ival, (uint8_t *) istr, isize);
+    return trie->lookup((const uint8_t *) istr, isize, nsv) ? 1 : NOT_FOUND;
 }
 template <>
 uint64_t decode(trie_t* trie, uint64_t query) {
@@ -390,7 +523,7 @@ uint64_t get_memory(trie_t* trie) {
     return trie->size_in_bits()/8;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     return trie->look_up(query.c_str());
 }
 template <>
@@ -423,7 +556,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     return trie->lookup(query).value_or(NOT_FOUND);
 }
 template <>
@@ -450,7 +583,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     auto res = trie->index(query);
     return res != static_cast<size_t>(-1) ? uint64_t(res) : NOT_FOUND;
 }
@@ -501,7 +634,7 @@ std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) 
     return trie;
 }
 template <>
-uint64_t lookup(trie_t* trie, const std::string& query) {
+uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
     auto it = trie->find(query.c_str());
     return it != trie->end() ? *it : NOT_FOUND;
 }
@@ -533,11 +666,12 @@ void main_template(const char* title, std::vector<std::string>& keys, std::vecto
     }
 
     {
+        bool as_str_or_int = !opts.as_int;
         essentials::timer<essentials::clock_type, std::chrono::nanoseconds> tm;
         for (int i = 0; i <= SEARCH_RUNS; ++i) {
             tm.start();
             for (const auto& query : queries) {
-                if (lookup(trie.get(), query) == NOT_FOUND) {
+                if (lookup(trie.get(), query, as_str_or_int) == NOT_FOUND) {
                     tfm::errorfln("Not found: %s", query);
                     return;
                 }
@@ -549,10 +683,11 @@ void main_template(const char* title, std::vector<std::string>& keys, std::vecto
         logger.add("best_lookup_ns_per_query", tm.min() / queries.size());
     }
 
+    bool as_str_or_int = !opts.as_int;
     if (run_decode) {
         std::vector<uint64_t> ids(queries.size());
         for (size_t i = 0; i < queries.size(); i++) {
-            ids[i] = lookup(trie.get(), queries[i]);
+            ids[i] = lookup(trie.get(), queries[i], as_str_or_int);
         }
 
         essentials::timer<essentials::clock_type, std::chrono::nanoseconds> tm;
@@ -584,6 +719,9 @@ cmd_line_parser::parser make_parser(int argc, char** argv) {
     p.add("random_seed", "Random seed for sampling (default=13)", "-s", false);
     p.add("to_unique", "Unique strings? (default=false)", "-u", false);
     p.add("force_asc", "Force Ascending label order? (default=false)", "-a", false);
+    p.add("assume_int", "Assume input is integer? (default=false)", "-i", false);
+    p.add("trie_count", "Compression level? (default=1)", "-d", false);
+    p.add("other_opts", "Other options? (default=empty)", "-o", false);
     return p;
 }
 
@@ -603,9 +741,15 @@ int main(int argc, char* argv[]) {
     const auto random_seed = p.get<std::uint64_t>("random_seed", 13);
     const auto to_unique = p.get<bool>("to_unique", false);
     const auto force_asc = p.get<bool>("force_asc", false);
+    const auto as_int = p.get<bool>("assume_int", false);
+    const auto trie_count = p.get<int>("trie_count", 1);
+    const auto other_opts = p.get<std::string>("other_opts");
 
     build_opts opts;
     opts.force_asc = force_asc;
+    opts.as_int = as_int;
+    opts.trie_count = trie_count;
+    opts.other_opts = other_opts;
 
     auto keys = load_strings(input_keys, to_unique);
     auto queries = sample_strings(keys, num_samples, random_seed);
