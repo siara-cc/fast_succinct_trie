@@ -353,12 +353,12 @@ template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
     madras_dv1::bldr_options bldr_opts = madras_dv1::dflt_opts;
     if (opts.force_asc) {
-        bldr_opts.dart = true;
+        bldr_opts.leap_frog = true;
         bldr_opts.sort_nodes_on_freq = false;
     }
     bldr_opts.max_inner_tries = opts.trie_count - 1;
     madras_dv1::builder trie_bldr(nullptr, "kv_table,Key", 1, "t", "u",
-                0, true, false, bldr_opts);
+                0, 1, &bldr_opts);
     if (!opts.as_int) {
         for (std::size_t i = 0; i < keys.size(); ++i) {
             trie_bldr.insert((const uint8_t *) keys[i].c_str(), keys[i].length());
@@ -462,7 +462,7 @@ uint64_t decode(trie_t* trie, uint64_t query) {
 using trie_t = leopard::trie;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
-    auto trie = std::make_unique<trie_t>(1, "t", "u");
+    auto trie = std::make_unique<trie_t>();
     if (!opts.as_int) {
         for (std::size_t i = 0; i < keys.size(); ++i) {
             trie->insert((const uint8_t *) keys[i].c_str(), keys[i].length());
