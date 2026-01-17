@@ -333,9 +333,9 @@ uint64_t get_memory(trie_t* trie) {
 #endif
 
 #ifdef USE_MADRAS
-#include <madras_builder_dv1.hpp>
-#include <madras_dv1.hpp>
-class cleanup_madras : public madras_dv1::cleanup_interface {
+#include <madras/dv1/builder/madras_builder.hpp>
+#include <madras/dv1/reader/static_trie_map.hpp>
+class cleanup_madras : public madras::dv1::cleanup_interface {
     private:
         std::vector<uint8_t> *output_buf;
     public:
@@ -348,16 +348,18 @@ class cleanup_madras : public madras_dv1::cleanup_interface {
             output_buf = _output_buf;
         }
 };
-using trie_t = madras_dv1::static_trie_map;
+using trie_t = madras::dv1::static_trie_map;
 template <>
 std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
-    madras_dv1::bldr_options bldr_opts = madras_dv1::dflt_opts;
+    madras::dv1::bldr_options bldr_opts = madras::dv1::dflt_opts;
     if (opts.force_asc) {
         bldr_opts.leap_frog = true;
         bldr_opts.sort_nodes_on_freq = false;
     }
     bldr_opts.max_inner_tries = opts.trie_count - 1;
-    madras_dv1::builder trie_bldr(nullptr, "kv_table,Key", 1, "t", "u",
+    bldr_opts.max_groups = 1;
+    bldr_opts.partial_sfx_coding = false;
+    madras::dv1::builder trie_bldr(nullptr, "kv_table,Key", 1, "t", "u",
                 0, 1, &bldr_opts);
     if (!opts.as_int) {
         for (std::size_t i = 0; i < keys.size(); ++i) {
@@ -390,7 +392,7 @@ uint64_t get_memory(trie_t* trie) {
 }
 template <>
 uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
-    static madras_dv1::input_ctx in_ctx;
+    static madras::dv1::input_ctx in_ctx;
     if (as_str_or_int) {
         in_ctx.key = (const uint8_t *) query.c_str();
         in_ctx.key_len = query.length();
