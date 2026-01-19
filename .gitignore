@@ -41,3 +41,8 @@ logs*/
 *.png
 run.sh
 bench/*.json
+
+.DS_Store
+bench/Makefile
+bench/cmake_install.cmake
+
