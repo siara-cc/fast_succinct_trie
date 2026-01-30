@@ -460,53 +460,6 @@ uint64_t decode(trie_t* trie, uint64_t query) {
 }
 #endif
 
-#ifdef USE_LEOPARD
-#include <leopard.hpp>
-using trie_t = leopard::trie;
-template <>
-std::unique_ptr<trie_t> build(std::vector<std::string>& keys, build_opts& opts) {
-    auto trie = std::make_unique<trie_t>();
-    if (!opts.as_int) {
-        for (std::size_t i = 0; i < keys.size(); ++i) {
-            trie->insert((const uint8_t *) keys[i].c_str(), keys[i].length());
-        }
-        trie->recreate_min_loc();
-        return trie;
-    }
-    int64_t ival;
-    size_t isize;
-    char istr[10];
-    for (std::size_t i = 0; i < keys.size(); ++i) {
-        ival = atoll(keys[i].c_str());
-        isize = get_svint60_len(ival);
-        copy_svint60(ival, (uint8_t *) istr, isize);
-        trie->insert((const uint8_t *) istr, isize);
-    }
-    trie->recreate_min_loc();
-    return trie;
-}
-template <>
-uint64_t get_memory(trie_t* trie) {
-    return trie->get_size_in_bytes();
-}
-template <>
-uint64_t lookup(trie_t* trie, const std::string& query, bool as_str_or_int) {
-    static leopard::node_set_vars nsv;
-    if (as_str_or_int) {
-        return trie->lookup((const uint8_t *) query.c_str(), query.length(), nsv) ? 1 : NOT_FOUND;
-    }
-    char istr[10];
-    int64_t ival = atoll(query.c_str());
-    size_t isize = get_svint60_len(ival);
-    copy_svint60(ival, (uint8_t *) istr, isize);
-    return trie->lookup((const uint8_t *) istr, isize, nsv) ? 1 : NOT_FOUND;
-}
-template <>
-uint64_t decode(trie_t* trie, uint64_t query) {
-    return 0;
-}
-#endif
-
 #ifdef USE_COCO_TRIE
 #include <uncompacted_trie.hpp>
 #include <utils.hpp>
